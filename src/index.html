@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GhostDesk</title>
+<style>
+  :root {
+    --accent: #7C3AED;
+    --bg: rgba(13, 13, 18, 0.93);
+    --surface: rgba(255,255,255,0.05);
+    --surface2: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.1);
+    --text: #F0EFFF;
+    --muted: #8884A8;
+    --radius: 12px;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: var(--font);
+    background: transparent;
+    color: var(--text);
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 16px;
+  }
+
+  .window {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    backdrop-filter: blur(24px);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  }
+
+  /* ── Titlebar ── */
+  .titlebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid var(--border);
+    -webkit-app-region: drag;
+    flex-shrink: 0;
+  }
+  .titlebar .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .titlebar .title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.04em;
+    flex: 1;
+  }
+  .titlebar-btns {
+    display: flex;
+    gap: 6px;
+    -webkit-app-region: no-drag;
+  }
+  .titlebar-btns button {
+    width: 26px; height: 26px;
+    border: none;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .titlebar-btns button:hover { background: rgba(255,255,255,0.14); color: var(--text); }
+
+  /* ── Desk Strip ── */
+  .desk-strip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: none;
+  }
+  .desk-strip::-webkit-scrollbar { display: none; }
+  .desk-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px 3px 7px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .desk-pill.current {
+    border-color: var(--accent);
+    color: var(--text);
+    background: rgba(124,58,237,0.15);
+  }
+  .desk-pill .pill-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .desk-add {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .desk-add:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Opacity Slider ── */
+  .opacity-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    background: rgba(0,0,0,0.15);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .opacity-bar label { font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .opacity-bar input[type=range] {
+    flex: 1;
+    height: 3px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .opacity-bar span { font-size: 10px; color: var(--muted); width: 28px; text-align: right; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    padding: 0 14px;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.1);
+  }
+  .tab {
+    padding: 9px 13px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* ── Panels ── */
+  .panels { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; padding: 14px; gap: 10px; }
+  .panel.active { display: flex; }
+
+  /* ── Notes ── */
+  #notes-area {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    padding: 12px;
+    resize: none;
+    outline: none;
+    font-family: var(--font);
+    line-height: 1.6;
+    transition: border-color 0.15s;
+  }
+  #notes-area:focus { border-color: var(--accent); }
+  #notes-area::placeholder { color: var(--muted); }
+
+  /* ── Snippets ── */
+  .snippet-input-row {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .snippet-input-row input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    font-family: var(--font);
+    transition: border-color 0.15s;
+  }
+  .snippet-input-row input:focus { border-color: var(--accent); }
+  .snippet-input-row input::placeholder { color: var(--muted); }
+  .btn-add {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 18px;
+    width: 34px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+  .btn-add:hover { opacity: 0.85; }
+  .snippet-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .snippet-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .snippet-item span { flex: 1; color: var(--text); word-break: break-word; }
+  .snippet-item button {
+    background: none; border: none; cursor: pointer;
+    font-size: 13px; color: var(--muted);
+    transition: color 0.15s; flex-shrink: 0;
+  }
+  .snippet-item button:hover { color: var(--text); }
+  .copied-toast {
+    display: none;
+    background: rgba(124,58,237,0.25);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 11px;
+    padding: 6px 12px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Tasks ── */
+  .task-input-row {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .task-input-row input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    font-family: var(--font);
+    transition: border-color 0.15s;
+  }
+  .task-input-row input:focus { border-color: var(--accent); }
+  .task-input-row input::placeholder { color: var(--muted); }
+  .task-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+  .task-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  .task-item input[type=checkbox] { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .task-item .task-text { flex: 1; cursor: pointer; }
+  .task-item.done .task-text { text-decoration: line-through; color: var(--muted); }
+  .task-item button { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--muted); transition: color 0.15s; flex-shrink: 0; }
+  .task-item button:hover { color: #ef4444; }
+
+  /* ── AI Chat ── */
+  .ai-panel { display: flex; flex-direction: column; flex: 1; overflow: hidden; gap: 0; }
+  .ai-key-row {
+    display: flex; gap: 6px; align-items: center;
+    padding: 0 0 10px 0;
+    flex-shrink: 0;
+  }
+  .ai-key-row input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 11px;
+    padding: 7px 10px;
+    outline: none;
+    font-family: 'Courier New', monospace;
+    transition: border-color 0.15s;
+  }
+  .ai-key-row input:focus { border-color: var(--accent); }
+  .ai-key-row input::placeholder { color: var(--muted); font-family: var(--font); }
+  .ai-key-save {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 11px; padding: 7px 10px; cursor: pointer;
+    transition: background 0.15s; white-space: nowrap;
+  }
+  .ai-key-save:hover { background: rgba(255,255,255,0.12); }
+  .ai-messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .ai-messages::-webkit-scrollbar { width: 4px; }
+  .ai-messages::-webkit-scrollbar-track { background: transparent; }
+  .ai-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .msg {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .msg-label { font-size: 10px; color: var(--muted); font-weight: 600; letter-spacing: 0.06em; }
+  .msg-bubble {
+    padding: 9px 11px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .msg.user .msg-label { text-align: right; }
+  .msg.user .msg-bubble { background: rgba(124,58,237,0.25); border: 1px solid rgba(124,58,237,0.4); color: var(--text); align-self: flex-end; max-width: 90%; }
+  .msg.ai .msg-bubble { background: var(--surface); border: 1px solid var(--border); color: var(--text); align-self: flex-start; max-width: 95%; }
+  .msg.ai.streaming .msg-bubble::after { content: '▋'; display: inline; animation: blink 0.8s infinite; color: var(--accent); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .ai-input-row {
+    display: flex; gap: 7px; align-items: flex-end;
+    padding-top: 10px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .ai-input-row textarea {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 12.5px;
+    padding: 9px 11px;
+    outline: none;
+    font-family: var(--font);
+    resize: none;
+    min-height: 38px;
+    max-height: 100px;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+  }
+  .ai-input-row textarea:focus { border-color: var(--accent); }
+  .ai-input-row textarea::placeholder { color: var(--muted); }
+  .ai-send {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    width: 36px; height: 36px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+  .ai-send:hover { opacity: 0.85; }
+  .ai-send:disabled { opacity: 0.4; cursor: not-allowed; }
+  .ai-status {
+    font-size: 10px; color: var(--muted);
+    text-align: center; padding: 4px 0;
+    min-height: 18px;
+    flex-shrink: 0;
+  }
+  .ai-status.error { color: #ef4444; }
+  .ai-clear {
+    background: none; border: none; cursor: pointer;
+    font-size: 10px; color: var(--muted); padding: 2px 6px;
+    border-radius: 5px;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .ai-clear:hover { color: var(--text); background: var(--surface2); }
+
+  /* ── Desks Panel ── */
+  .desks-panel { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .desk-card {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .desk-card .dc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .desk-card .dc-name { flex: 1; font-weight: 500; }
+  .desk-card .dc-badge { font-size: 10px; color: var(--muted); }
+  .desk-card.current-card { border-color: var(--accent); background: rgba(124,58,237,0.1); }
+  .btn-connect {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: rgba(124,58,237,0.2);
+    border: 1px dashed rgba(124,58,237,0.5);
+    border-radius: 10px;
+    color: var(--accent);
+    font-size: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    font-family: var(--font);
+    font-weight: 500;
+  }
+  .btn-connect:hover { background: rgba(124,58,237,0.3); border-color: var(--accent); }
+
+  /* ── Remote Panel ── */
+  .remote-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .remote-section h3 { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+  .remote-row { display: flex; gap: 6px; align-items: center; }
+  .remote-row input {
+    flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    border-radius: 7px; color: var(--text); font-size: 12px;
+    padding: 7px 9px; outline: none; font-family: var(--font);
+    transition: border-color 0.15s;
+  }
+  .remote-row input:focus { border-color: var(--accent); }
+  .remote-row input::placeholder { color: var(--muted); }
+  .rbtn {
+    background: var(--accent); border: none; border-radius: 7px;
+    color: #fff; font-size: 11px; padding: 7px 12px; cursor: pointer;
+    transition: opacity 0.15s; white-space: nowrap; font-family: var(--font); font-weight: 600;
+  }
+  .rbtn:hover { opacity: 0.85; }
+  .rbtn.danger { background: #dc2626; }
+  .rbtn.secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+  .rbtn.secondary:hover { background: rgba(255,255,255,0.12); }
+  .code-display {
+    font-family: 'Courier New', monospace;
+    font-size: 22px; font-weight: 700;
+    letter-spacing: 0.18em; color: var(--accent);
+    text-align: center; padding: 8px 0;
+  }
+  .remote-info { font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .remote-status {
+    font-size: 11px; text-align: center; padding: 5px;
+    border-radius: 6px; font-weight: 500;
+  }
+  .remote-status.ok { color: #22c55e; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); }
+  .remote-status.err { color: #ef4444; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+  .remote-status.info { color: var(--muted); background: var(--surface2); border: 1px solid var(--border); }
+  .remote-chat { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; min-height: 80px; max-height: 140px; }
+  .rchat-msg { font-size: 11.5px; padding: 6px 9px; border-radius: 8px; word-break: break-word; }
+  .rchat-msg.me { background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.3); color: var(--text); align-self: flex-end; max-width: 90%; }
+  .rchat-msg.them { background: var(--surface); border: 1px solid var(--border); color: var(--text); align-self: flex-start; max-width: 90%; }
+  .rchat-msg .from { font-size: 9px; color: var(--muted); margin-bottom: 2px; }
+  .badge-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; margin-right: 5px; }
+
+  /* ── Scrollbar global ── */
+  * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  *::-webkit-scrollbar { width: 4px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="window" id="app">
+
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <div class="dot" id="title-dot"></div>
+    <span class="title" id="title-name">GhostDesk</span>
+    <div class="titlebar-btns">
+      <button onclick="window.ghostDesk.openNewDesk()" title="New Desk (Ctrl+Shift+N)">＋</button>
+      <button onclick="window.ghostDesk.minimize()" title="Minimize">─</button>
+      <button onclick="window.ghostDesk.close()" title="Close">✕</button>
+    </div>
+  </div>
+
+  <!-- Desk Strip -->
+  <div class="desk-strip" id="desk-strip">
+    <!-- pills injected by JS -->
+    <button class="desk-add" onclick="window.ghostDesk.openNewDesk()" title="Connect New Desk">＋</button>
+  </div>
+
+  <!-- Opacity -->
+  <div class="opacity-bar">
+    <label>Opacity</label>
+    <input type="range" id="opacity-slider" min="30" max="100" value="93" oninput="setOpacity(this.value)"/>
+    <span id="opacity-val">93%</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('ai')" id="tab-ai">🤖 AI</div>
+    <div class="tab" onclick="switchTab('notes')" id="tab-notes">📝 Notes</div>
+    <div class="tab" onclick="switchTab('snippets')" id="tab-snippets">⚡ Snippets</div>
+    <div class="tab" onclick="switchTab('tasks')" id="tab-tasks">✅ Tasks</div>
+    <div class="tab" onclick="switchTab('desks')" id="tab-desks">🖥 Desks</div>
+    <div class="tab" onclick="switchTab('remote')" id="tab-remote">🔗 Remote</div>
+  </div>
+
+  <!-- Panels -->
+  <div class="panels">
+
+    <!-- ── AI CHAT PANEL ── -->
+    <div class="panel active" id="panel-ai">
+      <div class="ai-panel">
+        <div class="ai-key-row">
+          <input type="password" id="api-key-input" placeholder="Paste your Anthropic API key (sk-ant-...)"/>
+          <button class="ai-key-save" onclick="saveApiKey()">Save</button>
+        </div>
+        <div class="ai-messages" id="ai-messages">
+          <div class="msg ai">
+            <div class="msg-label">GHOST AI</div>
+            <div class="msg-bubble">👋 Hi! I'm your private AI assistant. Add your Anthropic API key above to get started. Ask me anything — I'm invisible to screen sharing.</div>
+          </div>
+        </div>
+        <div class="ai-status" id="ai-status"></div>
+        <div class="ai-input-row">
+          <textarea id="ai-input" placeholder="Ask anything..." rows="1" onkeydown="aiKeydown(event)" oninput="autoResize(this)"></textarea>
+          <button class="ai-send" id="ai-send-btn" onclick="sendAiMessage()">↑</button>
+        </div>
+        <div style="display:flex;justify-content:flex-end;padding-top:4px;">
+          <button class="ai-clear" onclick="clearChat()">Clear chat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NOTES PANEL ── -->
+    <div class="panel" id="panel-notes">
+      <textarea id="notes-area" placeholder="Your private scratchpad... Saves automatically." oninput="saveNotes()"></textarea>
+    </div>
+
+    <!-- ── SNIPPETS PANEL ── -->
+    <div class="panel" id="panel-snippets">
+      <div class="snippet-input-row">
+        <input id="snippet-input" placeholder="Add a snippet to save..." onkeydown="if(event.key==='Enter')addSnippet()"/>
+        <button class="btn-add" onclick="addSnippet()">＋</button>
+      </div>
+      <div id="snippet-list" class="snippet-list"></div>
+      <div class="copied-toast" id="copied-toast">✓ Copied to clipboard!</div>
+    </div>
+
+    <!-- ── TASKS PANEL ── -->
+    <div class="panel" id="panel-tasks">
+      <div class="task-input-row">
+        <input id="task-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTask()"/>
+        <button class="btn-add" onclick="addTask()">＋</button>
+      </div>
+      <div id="task-list" class="task-list"></div>
+    </div>
+
+    <!-- ── DESKS PANEL ── -->
+    <div class="panel" id="panel-desks">
+      <div class="desks-panel" id="desks-panel"></div>
+      <button class="btn-connect" onclick="window.ghostDesk.openNewDesk()">＋ Connect New Desk</button>
+    </div>
+
+    <!-- ── REMOTE PANEL ── -->
+    <div class="panel" id="panel-remote" style="gap:10px;overflow-y:auto;">
+
+      <!-- HOST MODE -->
+      <div class="remote-section">
+        <h3>🖥 Host — Let others connect to you</h3>
+        <div id="host-idle">
+          <p class="remote-info">Start a session so another PC can connect to your GhostDesk.</p>
+          <br/>
+          <button class="rbtn" onclick="startHosting()" style="width:100%">Start Hosting</button>
+        </div>
+        <div id="host-active" style="display:none;flex-direction:column;gap:8px;">
+          <div class="remote-info">Share these details with the other PC:</div>
+          <div class="remote-row">
+            <input id="host-ip-display" readonly style="font-family:monospace;font-size:12px;"/>
+            <button class="rbtn secondary" onclick="copyHostIP()">Copy</button>
+          </div>
+          <div class="remote-info" style="text-align:center;">Session Code</div>
+          <div class="code-display" id="host-code">------</div>
+          <div class="remote-info" style="text-align:center;" id="host-client-count">0 clients connected</div>
+          <button class="rbtn danger" onclick="stopHosting()" style="width:100%">Stop Hosting</button>
+        </div>
+      </div>
+
+      <!-- CLIENT MODE -->
+      <div class="remote-section">
+        <h3>🔌 Connect — Join another GhostDesk</h3>
+        <div id="client-idle">
+          <p class="remote-info" style="margin-bottom:8px;">Enter the host's IP and session code:</p>
+          <div class="remote-row">
+            <input id="client-ip" placeholder="192.168.1.x" style="width:120px;flex:none;"/>
+            <input id="client-code" placeholder="CODE" style="width:80px;flex:none;font-family:monospace;text-transform:uppercase;letter-spacing:0.1em;"/>
+            <button class="rbtn" onclick="connectToHost()">Connect</button>
+          </div>
+        </div>
+        <div id="client-active" style="display:none;flex-direction:column;gap:6px;">
+          <div class="remote-status ok"><span class="badge-dot"></span>Connected to remote desk</div>
+          <button class="rbtn danger" onclick="disconnectFromHost()" style="width:100%">Disconnect</button>
+        </div>
+        <div id="client-status" class="remote-status info" style="display:none;"></div>
+      </div>
+
+      <!-- SHARED CHAT -->
+      <div class="remote-section" style="flex:1;">
+        <h3>💬 Remote Chat</h3>
+        <div class="remote-chat" id="remote-chat"></div>
+        <div class="remote-row" style="margin-top:6px;">
+          <input id="rchat-input" placeholder="Send a message..." onkeydown="if(event.key==='Enter')sendRemoteChat()"/>
+          <button class="rbtn" onclick="sendRemoteChat()">↑</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── State ──
+let myId = null;
+let myColor = '#7C3AED';
+let myName = 'GhostDesk';
+let deskList = [];
+let chatHistory = []; // {role, content}
+let isStreaming = false;
+
+// ── Init ──
+(async () => {
+  myId = await window.ghostDesk.getDeskId();
+
+  // Load saved API key
+  const savedKey = await window.ghostDesk.storeGet('apiKey');
+  if (savedKey) document.getElementById('api-key-input').value = savedKey;
+
+  // Load notes
+  const notes = await window.ghostDesk.storeGet(`notes-${myId}`) || '';
+  document.getElementById('notes-area').value = notes;
+
+  // Load snippets
+  renderSnippets(await window.ghostDesk.storeGet(`snippets-${myId}`) || []);
+
+  // Load tasks
+  renderTasks(await window.ghostDesk.storeGet(`tasks-${myId}`) || []);
+})();
+
+window.ghostDesk.onDeskIdentity(({ id, color, name }) => {
+  myId = id; myColor = color; myName = name;
+  document.getElementById('title-dot').style.background = color;
+  document.getElementById('title-name').textContent = name;
+  document.documentElement.style.setProperty('--accent', color);
+});
+
+window.ghostDesk.onDeskList((list) => {
+  deskList = list;
+  renderDeskStrip();
+  renderDesksPanel();
+});
+
+// ── Tabs ──
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ── Opacity ──
+function setOpacity(val) {
+  document.getElementById('opacity-val').textContent = val + '%';
+  document.getElementById('app').style.background = `rgba(13,13,18,${val/100})`;
+}
+
+// ── Desk Strip ──
+function renderDeskStrip() {
+  const strip = document.getElementById('desk-strip');
+  const addBtn = strip.querySelector('.desk-add');
+  strip.querySelectorAll('.desk-pill').forEach(p => p.remove());
+  deskList.forEach(d => {
+    const pill = document.createElement('div');
+    pill.className = 'desk-pill' + (d.id === myId ? ' current' : '');
+    pill.innerHTML = `<span class="pill-dot" style="background:${d.color}"></span>${d.name}`;
+    strip.insertBefore(pill, addBtn);
+  });
+}
+
+// ── Desks Panel ──
+function renderDesksPanel() {
+  const panel = document.getElementById('desks-panel');
+  panel.innerHTML = '';
+  deskList.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'desk-card' + (d.id === myId ? ' current-card' : '');
+    card.innerHTML = `
+      <span class="dc-dot" style="background:${d.color}"></span>
+      <span class="dc-name">${d.name}</span>
+      <span class="dc-badge">${d.id === myId ? 'Current' : 'Connected'}</span>`;
+    panel.appendChild(card);
+  });
+}
+
+// ── Notes ──
+async function saveNotes() {
+  const val = document.getElementById('notes-area').value;
+  await window.ghostDesk.storeSet(`notes-${myId}`, val);
+}
+
+// ── Snippets ──
+async function getSnippets() {
+  return await window.ghostDesk.storeGet(`snippets-${myId}`) || [];
+}
+async function saveSnippets(list) {
+  await window.ghostDesk.storeSet(`snippets-${myId}`, list);
+}
+function renderSnippets(list) {
+  const el = document.getElementById('snippet-list');
+  el.innerHTML = '';
+  list.forEach((s, i) => {
+    const item = document.createElement('div');
+    item.className = 'snippet-item';
+    item.innerHTML = `<span>${escHtml(s)}</span>
+      <button onclick="copySnippet(${i})" title="Copy">📋</button>
+      <button onclick="deleteSnippet(${i})" title="Delete">✕</button>`;
+    el.appendChild(item);
+  });
+}
+async function addSnippet() {
+  const input = document.getElementById('snippet-input');
+  const val = input.value.trim();
+  if (!val) return;
+  const list = await getSnippets();
+  list.unshift(val);
+  await saveSnippets(list);
+  renderSnippets(list);
+  input.value = '';
+}
+async function copySnippet(i) {
+  const list = await getSnippets();
+  await navigator.clipboard.writeText(list[i]);
+  const toast = document.getElementById('copied-toast');
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 1500);
+}
+async function deleteSnippet(i) {
+  const list = await getSnippets();
+  list.splice(i, 1);
+  await saveSnippets(list);
+  renderSnippets(list);
+}
+
+// ── Tasks ──
+async function getTasks() { return await window.ghostDesk.storeGet(`tasks-${myId}`) || []; }
+async function saveTasks(list) { await window.ghostDesk.storeSet(`tasks-${myId}`, list); }
+function renderTasks(list) {
+  const el = document.getElementById('task-list');
+  el.innerHTML = '';
+  list.forEach((t, i) => {
+    const item = document.createElement('div');
+    item.className = 'task-item' + (t.done ? ' done' : '');
+    item.innerHTML = `
+      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTask(${i})"/>
+      <span class="task-text" onclick="toggleTask(${i})">${escHtml(t.text)}</span>
+      <button onclick="deleteTask(${i})">✕</button>`;
+    el.appendChild(item);
+  });
+}
+async function addTask() {
+  const input = document.getElementById('task-input');
+  const val = input.value.trim();
+  if (!val) return;
+  const list = await getTasks();
+  list.push({ text: val, done: false });
+  await saveTasks(list);
+  renderTasks(list);
+  input.value = '';
+}
+async function toggleTask(i) {
+  const list = await getTasks();
+  list[i].done = !list[i].done;
+  await saveTasks(list);
+  renderTasks(list);
+}
+async function deleteTask(i) {
+  const list = await getTasks();
+  list.splice(i, 1);
+  await saveTasks(list);
+  renderTasks(list);
+}
+
+// ── AI Chat ──
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) return;
+  window.ghostDesk.storeSet('apiKey', key);
+  setStatus('✓ API key saved', false);
+  setTimeout(() => setStatus(''), 2000);
+}
+
+function setStatus(msg, isError = false) {
+  const el = document.getElementById('ai-status');
+  el.textContent = msg;
+  el.className = 'ai-status' + (isError ? ' error' : '');
+}
+
+function aiKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendAiMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function clearChat() {
+  chatHistory = [];
+  const messages = document.getElementById('ai-messages');
+  messages.innerHTML = `<div class="msg ai"><div class="msg-label">GHOST AI</div><div class="msg-bubble">Chat cleared. Ask me anything!</div></div>`;
+}
+
+function appendMessage(role, content, streaming = false) {
+  const messages = document.getElementById('ai-messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}` + (streaming ? ' streaming' : '');
+  div.innerHTML = `<div class="msg-label">${role === 'user' ? 'YOU' : 'GHOST AI'}</div><div class="msg-bubble"></div>`;
+  div.querySelector('.msg-bubble').textContent = content;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+  return div;
+}
+
+async function sendAiMessage() {
+  if (isStreaming) return;
+
+  const input = document.getElementById('ai-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  const apiKey = document.getElementById('api-key-input').value.trim()
+    || await window.ghostDesk.storeGet('apiKey');
+
+  if (!apiKey) {
+    setStatus('⚠ Add your Anthropic API key first', true);
+    return;
+  }
+
+  input.value = '';
+  input.style.height = 'auto';
+  isStreaming = true;
+  document.getElementById('ai-send-btn').disabled = true;
+
+  // Add user message to UI + history
+  appendMessage('user', question);
+  chatHistory.push({ role: 'user', content: question });
+
+  // Add AI bubble (streaming)
+  const aiDiv = appendMessage('ai', '', true);
+  const bubble = aiDiv.querySelector('.msg-bubble');
+  let fullText = '';
+
+  setStatus('Thinking...');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        stream: true,
+        system: 'You are a private AI assistant running inside GhostDesk, a screen-invisible overlay app. Be concise, clear, and helpful. Format responses for a small overlay window — use short paragraphs, avoid long bullet lists unless needed.',
+        messages: chatHistory,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const json = JSON.parse(data);
+          if (json.type === 'content_block_delta' && json.delta?.text) {
+            fullText += json.delta.text;
+            bubble.textContent = fullText;
+            const messages = document.getElementById('ai-messages');
+            messages.scrollTop = messages.scrollHeight;
+          }
+        } catch (e) {}
+      }
+    }
+
+    aiDiv.classList.remove('streaming');
+    chatHistory.push({ role: 'assistant', content: fullText });
+    setStatus('');
+
+  } catch (err) {
+    aiDiv.classList.remove('streaming');
+    bubble.textContent = '⚠ Error: ' + err.message;
+    chatHistory.pop(); // Remove failed user message from history
+    setStatus('Request failed — check your API key', true);
+  }
+
+  isStreaming = false;
+  document.getElementById('ai-send-btn').disabled = false;
+}
+
+// ── Utils ──
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Remote ──
+let isHosting = false;
+let isConnected = false;
+let remoteNickname = 'Me';
+
+function startHosting() {
+  window.ghostDesk.startHosting();
+}
+
+function stopHosting() {
+  window.ghostDesk.stopHosting();
+}
+
+function copyHostIP() {
+  const val = document.getElementById('host-ip-display').value;
+  navigator.clipboard.writeText(val);
+}
+
+function connectToHost() {
+  const ip = document.getElementById('client-ip').value.trim();
+  const code = document.getElementById('client-code').value.trim().toUpperCase();
+  if (!ip || !code) return;
+  showClientStatus('Connecting...', 'info');
+  window.ghostDesk.remoteConnect({ ip, port: 45678, code });
+}
+
+function disconnectFromHost() {
+  window.ghostDesk.remoteDisconnect();
+  document.getElementById('client-active').style.display = 'none';
+  document.getElementById('client-idle').style.display = 'block';
+  showClientStatus('Disconnected', 'info');
+  isConnected = false;
+}
+
+function showClientStatus(msg, type) {
+  const el = document.getElementById('client-status');
+  el.textContent = msg;
+  el.className = `remote-status ${type}`;
+  el.style.display = 'block';
+  if (type !== 'err') setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function sendRemoteChat() {
+  const input = document.getElementById('rchat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const msg = { type: 'chat', text, from: myName };
+  if (isHosting) {
+    window.ghostDesk.sendRemoteMessage(msg);
+  } else if (isConnected) {
+    window.ghostDesk.sendToHost(msg);
+    appendRemoteChat('Me', text, true);
+  }
+}
+
+function appendRemoteChat(from, text, isMe = false) {
+  const chat = document.getElementById('remote-chat');
+  const div = document.createElement('div');
+  div.className = `rchat-msg ${isMe ? 'me' : 'them'}`;
+  div.innerHTML = `<div class="from">${escHtml(from)}</div>${escHtml(text)}`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ── Remote Event Listeners ──
+window.ghostDesk.onHostingStarted(({ ip, port, code }) => {
+  isHosting = true;
+  document.getElementById('host-idle').style.display = 'none';
+  document.getElementById('host-active').style.display = 'flex';
+  document.getElementById('host-ip-display').value = `${ip}:${port}`;
+  document.getElementById('host-code').textContent = code;
+});
+
+window.ghostDesk.onHostingStopped(() => {
+  isHosting = false;
+  document.getElementById('host-active').style.display = 'none';
+  document.getElementById('host-idle').style.display = 'block';
+  document.getElementById('host-client-count').textContent = '0 clients connected';
+});
+
+window.ghostDesk.onRemoteClientJoined(({ count }) => {
+  document.getElementById('host-client-count').textContent = `${count} client${count !== 1 ? 's' : ''} connected`;
+  appendRemoteChat('System', '🟢 A remote desk connected', false);
+});
+
+window.ghostDesk.onRemoteClientLeft(({ count }) => {
+  document.getElementById('host-client-count').textContent = `${count} client${count !== 1 ? 's' : ''} connected`;
+  appendRemoteChat('System', '🔴 A remote desk disconnected', false);
+});
+
+window.ghostDesk.onRemoteConnected(() => {
+  isConnected = true;
+  document.getElementById('client-idle').style.display = 'none';
+  document.getElementById('client-active').style.display = 'flex';
+  document.getElementById('client-status').style.display = 'none';
+  appendRemoteChat('System', '🟢 Connected to host desk!', false);
+});
+
+window.ghostDesk.onRemoteDisconnected(() => {
+  isConnected = false;
+  document.getElementById('client-active').style.display = 'none';
+  document.getElementById('client-idle').style.display = 'block';
+  showClientStatus('Disconnected from host', 'info');
+});
+
+window.ghostDesk.onRemoteError(({ error }) => {
+  showClientStatus('⚠ ' + error, 'err');
+});
+
+window.ghostDesk.onRemoteMessage((msg) => {
+  if (msg.type === 'chat' && msg.from !== myName) {
+    appendRemoteChat(msg.from || 'Remote', msg.text, false);
+  }
+  if (msg.type === 'chat' && isHosting) {
+    // echo back to sender confirmation - already shown via sendRemoteMessage
+    appendRemoteChat('Me → All', msg.text, true);
+  }
+});
+</script>
+</body>
+</html>

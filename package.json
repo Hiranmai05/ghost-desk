@@ -1,0 +1,49 @@
+{
+  "name": "ghost-desk",
+  "version": "2.0.0",
+  "description": "A screen-invisible floating overlay with AI assistant, notes, snippets, tasks, and multi-desk support",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build-addon": "node scripts/try-build-addon.js",
+    "postinstall": "node scripts/try-build-addon.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "electron",
+    "overlay",
+    "ghost",
+    "ai",
+    "screen-invisible",
+    "productivity"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0",
+    "node-addon-api": "^7.0.0",
+    "node-gyp": "^10.0.0"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "ws": "^8.21.0"
+  },
+  "build": {
+    "appId": "com.yourname.ghostdesk",
+    "productName": "GhostDesk",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
