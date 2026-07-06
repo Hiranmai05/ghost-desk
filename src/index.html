@@ -371,6 +371,10 @@
 </div>
 
 <script>
+  window.onerror = function(msg, url, line) {
+  const box = document.getElementById('relay-status-box');
+  if (box) { box.style.display = 'block'; box.innerText = 'JS ERROR: ' + msg + ' (line ' + line + ')'; }
+};
 let myId = null, myColor = '#7C3AED', myName = 'GhostDesk';
 let deskList = [], chatHistory = [], isStreaming = false;
 
@@ -585,7 +589,9 @@ window.ghostDesk.onRelayStatus((data) => {
   else if (data.status === 'error') box.innerText = '❌ Error: ' + (data.error || 'Could not connect');
 });
 window.ghostDesk.onHostCodeGenerated((code)=>{
-  setStatus('Your code: '+code);
+  const box = document.getElementById('relay-status-box');
+  box.style.display = 'block';
+  box.innerText = 'Your code: ' + code;
 });
 window.ghostDesk.onRelayFrame((frame)=>{
   const img = document.getElementById('remote-frame');
