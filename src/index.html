@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>GhostDesk</title>
+<style>
+:root{--accent:#7C3AED;--bg:rgba(13,13,18,0.93);--surface:rgba(255,255,255,0.05);--surface2:rgba(255,255,255,0.08);--border:rgba(255,255,255,0.1);--text:#F0EFFF;--muted:#8884A8;--radius:12px;--font:'Segoe UI',system-ui,sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font);background:transparent;color:var(--text);width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;}
+.window{display:flex;flex-direction:column;height:100vh;background:var(--bg);border:1px solid var(--border);border-radius:16px;overflow:hidden;backdrop-filter:blur(24px);box-shadow:0 24px 64px rgba(0,0,0,0.6);}
+.titlebar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(0,0,0,0.3);border-bottom:1px solid var(--border);-webkit-app-region:drag;flex-shrink:0;}
+.titlebar .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.titlebar .title{font-size:12px;font-weight:600;color:var(--text);letter-spacing:.04em;flex:1;}
+.titlebar-btns{display:flex;gap:6px;-webkit-app-region:no-drag;}
+.titlebar-btns button{width:26px;height:26px;border:none;border-radius:6px;background:var(--surface2);color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;}
+.titlebar-btns button:hover{background:rgba(255,255,255,0.14);color:var(--text);}
+.desk-strip{display:flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;scrollbar-width:none;}
+.desk-pill{display:flex;align-items:center;gap:5px;padding:3px 10px 3px 7px;border-radius:20px;border:1px solid transparent;font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.desk-pill.current{border-color:var(--accent);color:var(--text);background:rgba(124,58,237,0.15);}
+.desk-pill .pill-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.desk-add{width:22px;height:22px;border-radius:50%;border:1px dashed var(--border);background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:border-color .15s,color .15s;}
+.desk-add:hover{border-color:var(--accent);color:var(--accent);}
+.opacity-bar{display:flex;align-items:center;gap:8px;padding:5px 14px;background:rgba(0,0,0,0.15);border-bottom:1px solid var(--border);flex-shrink:0;}
+.opacity-bar label{font-size:10px;color:var(--muted);white-space:nowrap;}
+.opacity-bar input[type=range]{flex:1;height:3px;accent-color:var(--accent);cursor:pointer;}
+.opacity-bar span{font-size:10px;color:var(--muted);width:28px;text-align:right;}
+.tabs{display:flex;padding:0 14px;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(0,0,0,0.1);}
+.tab{padding:9px 13px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab:hover:not(.active){color:var(--text);}
+.panels{flex:1;overflow:hidden;display:flex;flex-direction:column;-webkit-app-region:no-drag;}
+.panel{display:none;flex:1;flex-direction:column;overflow:hidden;padding:14px;gap:10px;-webkit-app-region:no-drag;}
+.panel.active{display:flex;}
+#notes-area{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;padding:12px;resize:none;outline:none;font-family:var(--font);line-height:1.6;transition:border-color .15s;}
+#notes-area:focus{border-color:var(--accent);}
+#notes-area::placeholder{color:var(--muted);}
+.snippet-input-row,.task-input-row{display:flex;gap:8px;flex-shrink:0;}
+.snippet-input-row input,.task-input-row input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:8px 10px;outline:none;font-family:var(--font);transition:border-color .15s;}
+.snippet-input-row input:focus,.task-input-row input:focus{border-color:var(--accent);}
+.snippet-input-row input::placeholder,.task-input-row input::placeholder{color:var(--muted);}
+.btn-add{background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:18px;width:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .15s;flex-shrink:0;}
+.btn-add:hover{opacity:.85;}
+.snippet-list,.task-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
+.snippet-item{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;}
+.snippet-item span{flex:1;color:var(--text);word-break:break-word;}
+.snippet-item button,.task-item button{background:none;border:none;cursor:pointer;font-size:13px;color:var(--muted);transition:color .15s;flex-shrink:0;}
+.snippet-item button:hover{color:var(--text);}
+.copied-toast{display:none;background:rgba(124,58,237,0.25);border:1px solid var(--accent);border-radius:8px;color:var(--accent);font-size:11px;padding:6px 12px;text-align:center;flex-shrink:0;}
+.task-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;}
+.task-item input[type=checkbox]{accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.task-item .task-text{flex:1;cursor:pointer;}
+.task-item.done .task-text{text-decoration:line-through;color:var(--muted);}
+.task-item button:hover{color:#ef4444;}
+.ai-panel{display:flex;flex-direction:column;flex:1;overflow:hidden;gap:0;}
+.ai-key-row{display:flex;gap:6px;align-items:center;padding:0 0 10px 0;flex-shrink:0;}
+.ai-key-row input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;padding:7px 10px;outline:none;font-family:'Courier New',monospace;transition:border-color .15s;}
+.ai-key-row input:focus{border-color:var(--accent);}
+.ai-key-row input::placeholder{color:var(--muted);font-family:var(--font);}
+.ai-key-save{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;padding:7px 10px;cursor:pointer;transition:background .15s;white-space:nowrap;}
+.ai-key-save:hover{background:rgba(255,255,255,0.12);}
+.ai-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.msg{display:flex;flex-direction:column;gap:3px;}
+.msg-label{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.06em;}
+.msg-bubble{padding:9px 11px;border-radius:10px;font-size:12.5px;line-height:1.55;word-break:break-word;white-space:pre-wrap;}
+.msg.user .msg-label{text-align:right;}
+.msg.user .msg-bubble{background:rgba(124,58,237,0.25);border:1px solid rgba(124,58,237,0.4);color:var(--text);align-self:flex-end;max-width:90%;}
+.msg.ai .msg-bubble{background:var(--surface);border:1px solid var(--border);color:var(--text);align-self:flex-start;max-width:95%;}
+.msg.ai.streaming .msg-bubble::after{content:'?';display:inline;animation:blink .8s infinite;color:var(--accent);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.ai-input-row{display:flex;gap:7px;align-items:flex-end;padding-top:10px;flex-shrink:0;border-top:1px solid var(--border);margin-top:8px;}
+.ai-input-row textarea{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12.5px;padding:9px 11px;outline:none;font-family:var(--font);resize:none;min-height:38px;max-height:100px;line-height:1.5;transition:border-color .15s;}
+.ai-input-row textarea:focus{border-color:var(--accent);}
+.ai-input-row textarea::placeholder{color:var(--muted);}
+.ai-send{background:var(--accent);border:none;border-radius:10px;color:#fff;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:opacity .15s;flex-shrink:0;}
+.ai-send:hover{opacity:.85;}
+.ai-send:disabled{opacity:.4;cursor:not-allowed;}
+.ai-status{font-size:10px;color:var(--muted);text-align:center;padding:4px 0;min-height:18px;flex-shrink:0;}
+.ai-status.error{color:#ef4444;}
+.ai-clear{background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);padding:2px 6px;border-radius:5px;transition:color .15s,background .15s;flex-shrink:0;}
+.ai-clear:hover{color:var(--text);background:var(--surface2);}
+.desks-panel{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+.desk-card{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;}
+.desk-card .dc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.desk-card .dc-name{flex:1;font-weight:500;}
+.desk-card .dc-badge{font-size:10px;color:var(--muted);}
+.desk-card.current-card{border-color:var(--accent);background:rgba(124,58,237,0.1);}
+.btn-connect{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(124,58,237,0.2);border:1px dashed rgba(124,58,237,0.5);border-radius:10px;color:var(--accent);font-size:12px;padding:12px;cursor:pointer;transition:background .15s,border-color .15s;font-family:var(--font);font-weight:500;-webkit-app-region:no-drag;width:100%;}
+.btn-connect:hover{background:rgba(124,58,237,0.3);border-color:var(--accent);}
+.btn-connect:disabled{opacity:.5;cursor:not-allowed;}
+#panel-remote{-webkit-app-region:no-drag !important;overflow-y:auto;}
+#panel-remote *{-webkit-app-region:no-drag !important;pointer-events:all !important;}
+#host-code-box{display:none;flex-direction:column;align-items:center;gap:8px;background:rgba(124,58,237,0.15);border:2px solid var(--accent);border-radius:12px;padding:16px;text-align:center;}
+#host-code-value{font-size:32px;font-weight:900;font-family:'Courier New',monospace;letter-spacing:10px;color:var(--text);}
+.code-label{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;}
+.code-hint{font-size:11px;color:var(--muted);}
+#copy-code-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;padding:6px 16px;cursor:pointer;transition:background .15s;}
+#copy-code-btn:hover{background:rgba(255,255,255,0.14);}
+#join-code-input{width:100%;padding:12px 14px;font-size:20px;font-family:'Courier New',monospace;letter-spacing:8px;text-align:center;background:rgba(255,255,255,0.08);border:2px solid var(--accent);border-radius:10px;color:var(--text);outline:none;}
+#join-code-input:focus{background:rgba(124,58,237,0.15);box-shadow:0 0 0 3px rgba(124,58,237,0.3);}
+#join-code-input::placeholder{color:var(--muted);letter-spacing:2px;font-size:13px;}
+#join-connect-btn{width:100%;padding:12px;background:var(--accent);color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;}
+#join-connect-btn:hover{opacity:.85;}
+#relay-status-box{font-size:12px;color:var(--muted);padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;line-height:1.5;display:none;}
+*{scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+*::-webkit-scrollbar{width:4px;}
+*::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+<div class="window" id="app">
+  <div class="titlebar">
+    <div class="dot" id="title-dot"></div>
+    <span class="title" id="title-name">GhostDesk</span>
+    <div class="titlebar-btns">
+      <button onclick="window.ghostDesk.openNewDesk()">+</button>
+      <button onclick="window.ghostDesk.minimize()">-</button>
+      <button onclick="window.ghostDesk.close()">x</button>
+    </div>
+  </div>
+  <div class="desk-strip" id="desk-strip"><button class="desk-add" onclick="window.ghostDesk.openNewDesk()">+</button></div>
+  <div class="opacity-bar">
+    <label>Opacity</label>
+    <input type="range" id="opacity-slider" min="30" max="100" value="93" oninput="setOpacity(this.value)"/>
+    <span id="opacity-val">93%</span>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('ai')" id="tab-ai">AI</div>
+    <div class="tab" onclick="switchTab('notes')" id="tab-notes">Notes</div>
+    <div class="tab" onclick="switchTab('snippets')" id="tab-snippets">Snippets</div>
+    <div class="tab" onclick="switchTab('tasks')" id="tab-tasks">Tasks</div>
+    <div class="tab" onclick="switchTab('desks')" id="tab-desks">Desks</div>
+    <div class="tab" onclick="switchTab('remote')" id="tab-remote">Remote</div>
+  </div>
+  <div class="panels">
+    <div class="panel active" id="panel-ai">
+      <div class="ai-panel">
+        <div class="ai-key-row">
+          <input type="password" id="api-key-input" placeholder="Paste Anthropic API key (sk-ant-...)"/>
+          <button class="ai-key-save" onclick="saveApiKey()">Save</button>
+        </div>
+        <div class="ai-messages" id="ai-messages">
+          <div class="msg ai"><div class="msg-label">GHOST AI</div><div class="msg-bubble">Hi! Add your Anthropic API key above to get started.</div></div>
+        </div>
+        <div class="ai-status" id="ai-status"></div>
+        <div class="ai-input-row">
+          <textarea id="ai-input" placeholder="Ask anything..." rows="1" onkeydown="aiKeydown(event)" oninput="autoResize(this)"></textarea>
+          <button class="ai-send" id="ai-send-btn" onclick="sendAiMessage()">^</button>
+        </div>
+        <div style="display:flex;justify-content:flex-end;padding-top:4px;">
+          <button class="ai-clear" onclick="clearChat()">Clear chat</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="panel-notes">
+      <textarea id="notes-area" placeholder="Your private scratchpad..." oninput="saveNotes()"></textarea>
+    </div>
+    <div class="panel" id="panel-snippets">
+      <div class="snippet-input-row">
+        <input id="snippet-input" placeholder="Add a snippet..." onkeydown="if(event.key==='Enter')addSnippet()"/>
+        <button class="btn-add" onclick="addSnippet()">+</button>
+      </div>
+      <div id="snippet-list" class="snippet-list"></div>
+      <div class="copied-toast" id="copied-toast">Copied!</div>
+    </div>
+    <div class="panel" id="panel-tasks">
+      <div class="task-input-row">
+        <input id="task-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTask()"/>
+        <button class="btn-add" onclick="addTask()">+</button>
+      </div>
+      <div id="task-list" class="task-list"></div>
+    </div>
+    <div class="panel" id="panel-desks">
+      <div class="desks-panel" id="desks-panel"></div>
+      <button class="btn-connect" onclick="window.ghostDesk.openNewDesk()">+ New Desk</button>
+    </div>
+    <div class="panel" id="panel-remote">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn-connect" id="btn-host" onclick="startHost()">Host This Screen</button>
+        <div id="host-code-box">
+          <div class="code-label">YOUR SESSION CODE</div>
+          <div id="host-code-value">------</div>
+          <div class="code-hint">Share this code with the viewer</div>
+          <button id="copy-code-btn" onclick="copyCode()">Copy Code</button>
+        </div>
+        <button class="btn-connect" id="btn-join-toggle" onclick="toggleJoin()">Join a Session</button>
+        <div id="join-input-row" style="display:none;flex-direction:column;gap:8px;">
+          <input id="join-code-input" type="text" placeholder="Enter 6-digit code" maxlength="6" autocomplete="off" spellcheck="false"/>
+          <button id="join-connect-btn" onclick="joinHost()">Connect</button>
+        </div>
+        <div id="relay-status-box"></div>
+        <img id="remote-frame" style="display:none;width:100%;border-radius:8px;border:1px solid var(--border);cursor:crosshair;"/>
+        <button class="btn-connect" id="btn-stop" style="display:none;border-color:#ef4444;color:#ef4444;" onclick="stopSession()">Disconnect</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let myId=null,myColor='#7C3AED',chatHistory=[],isStreaming=false,currentCode='';
+
+(async()=>{
+  myId=await window.ghostDesk.getDeskId();
+  const k=await window.ghostDesk.storeGet('apiKey');
+  if(k) document.getElementById('api-key-input').value=k;
+  const n=await window.ghostDesk.storeGet('notes-'+myId)||'';
+  document.getElementById('notes-area').value=n;
+  renderSnippets(await window.ghostDesk.storeGet('snippets-'+myId)||[]);
+  renderTasks(await window.ghostDesk.storeGet('tasks-'+myId)||[]);
+})();
+
+window.ghostDesk.onDeskIdentity(({id,color,name})=>{
+  myId=id;myColor=color;
+  document.getElementById('title-dot').style.background=color;
+  document.getElementById('title-name').textContent=name;
+  document.documentElement.style.setProperty('--accent',color);
+});
+window.ghostDesk.onDeskList((list)=>{renderDeskStrip(list);renderDesksPanel(list);});
+
+// REMOTE LISTENERS
+window.ghostDesk.onHostCodeGenerated((code)=>{
+  currentCode=code;
+  document.getElementById('host-code-value').textContent=code;
+  document.getElementById('host-code-box').style.display='flex';
+  setStatus('Connecting to relay...');
+  document.getElementById('btn-stop').style.display='block';
+  document.getElementById('btn-host').disabled=true;
+  document.getElementById('btn-host').textContent='Hosting...';
+});
+window.ghostDesk.onHostReady((code)=>{
+  currentCode=code;
+  document.getElementById('host-code-value').textContent=code;
+  document.getElementById('host-code-box').style.display='flex';
+  setStatus('Hosting - waiting for viewer...');
+});
+window.ghostDesk.onClientConnected(()=>{
+  setStatus('Connected - receiving screen...');
+  document.getElementById('remote-frame').style.display='block';
+  document.getElementById('btn-stop').style.display='block';
+  document.getElementById('join-input-row').style.display='none';
+});
+window.ghostDesk.onSessionEnded(()=>{
+  setStatus('Session ended.');
+  document.getElementById('remote-frame').style.display='none';
+  document.getElementById('btn-stop').style.display='none';
+  document.getElementById('host-code-box').style.display='none';
+  document.getElementById('btn-host').disabled=false;
+  document.getElementById('btn-host').textContent='Host This Screen';
+});
+window.ghostDesk.onRelayError((msg)=>setStatus('Error: '+msg));
+window.ghostDesk.onRelayStatus((data)=>{
+  if(data.status==='client-joined') setStatus('Viewer connected ('+data.count+')');
+  else if(data.status==='client-left') setStatus('Viewer left');
+  else if(data.status==='disconnected'){document.getElementById('remote-frame').style.display='none';setStatus('Disconnected.');}
+});
+window.ghostDesk.onRelayFrame((frame)=>{
+  document.getElementById('remote-frame').src='data:image/jpeg;base64,'+frame;
+});
+
+function setStatus(msg){const b=document.getElementById('relay-status-box');b.textContent=msg;b.style.display=msg?'block':'none';}
+
+function startHost(){
+  document.getElementById('host-code-value').textContent='------';
+  document.getElementById('host-code-box').style.display='flex';
+  setStatus('Generating code...');
+  document.getElementById('btn-host').disabled=true;
+  document.getElementById('btn-host').textContent='Starting...';
+  window.ghostDesk.relayStartHost();
+}
+function toggleJoin(){
+  const r=document.getElementById('join-input-row');
+  const show=r.style.display==='none'||r.style.display==='';
+  r.style.display=show?'flex':'none';
+  if(show) setTimeout(()=>document.getElementById('join-code-input').focus(),50);
+}
+function joinHost(){
+  const code=document.getElementById('join-code-input').value.trim();
+  if(!code){document.getElementById('join-code-input').focus();return;}
+  setStatus('Connecting to '+code+'...');
+  document.getElementById('btn-stop').style.display='block';
+  window.ghostDesk.relayJoin(code);
+}
+function copyCode(){
+  navigator.clipboard.writeText(currentCode).then(()=>{
+    document.getElementById('copy-code-btn').textContent='Copied!';
+    setTimeout(()=>document.getElementById('copy-code-btn').textContent='Copy Code',1500);
+  });
+}
+function stopSession(){
+  window.ghostDesk.relayStop();
+  setStatus('');
+  document.getElementById('remote-frame').style.display='none';
+  document.getElementById('btn-stop').style.display='none';
+  document.getElementById('host-code-box').style.display='none';
+  document.getElementById('join-input-row').style.display='none';
+  document.getElementById('btn-host').disabled=false;
+  document.getElementById('btn-host').textContent='Host This Screen';
+}
+
+// Remote control
+const frameImg=document.getElementById('remote-frame');
+let lx=0,ly=0;
+frameImg.addEventListener('mousemove',(e)=>{const r=frameImg.getBoundingClientRect();lx=Math.round((e.clientX-r.left)/r.width*1280);ly=Math.round((e.clientY-r.top)/r.height*720);window.ghostDesk.relaySendControl({type:'mousemove',x:lx,y:ly});});
+frameImg.addEventListener('click',()=>window.ghostDesk.relaySendControl({type:'click',x:lx,y:ly,button:'left'}));
+frameImg.addEventListener('dblclick',()=>window.ghostDesk.relaySendControl({type:'dblclick',x:lx,y:ly}));
+frameImg.addEventListener('contextmenu',(e)=>{e.preventDefault();window.ghostDesk.relaySendControl({type:'rightclick',x:lx,y:ly});});
+frameImg.addEventListener('wheel',(e)=>{e.preventDefault();window.ghostDesk.relaySendControl({type:'scroll',deltaX:e.deltaX,deltaY:e.deltaY});});
+document.addEventListener('keydown',(e)=>{
+  const fv=document.getElementById('remote-frame').style.display!=='none';
+  const tag=document.activeElement?document.activeElement.tagName:'';
+  if(fv&&tag!=='INPUT'&&tag!=='TEXTAREA'){e.preventDefault();const m=[];if(e.ctrlKey)m.push('control');if(e.altKey)m.push('alt');if(e.shiftKey)m.push('shift');window.ghostDesk.relaySendControl({type:'keypress',key:e.key,modifiers:m});}
+});
+
+function switchTab(n){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('panel-'+n).classList.add('active');document.getElementById('tab-'+n).classList.add('active');}
+function setOpacity(v){document.getElementById('opacity-val').textContent=v+'%';document.getElementById('app').style.background='rgba(13,13,18,'+v/100+')';}
+function renderDeskStrip(list){const s=document.getElementById('desk-strip');const a=s.querySelector('.desk-add');s.querySelectorAll('.desk-pill').forEach(p=>p.remove());list.forEach(d=>{const p=document.createElement('div');p.className='desk-pill'+(d.id===myId?' current':'');p.innerHTML='<span class="pill-dot" style="background:'+d.color+'"></span>'+d.name;s.insertBefore(p,a);});}
+function renderDesksPanel(list){const p=document.getElementById('desks-panel');p.innerHTML='';list.forEach(d=>{const c=document.createElement('div');c.className='desk-card'+(d.id===myId?' current-card':'');c.innerHTML='<span class="dc-dot" style="background:'+d.color+'"></span><span class="dc-name">'+d.name+'</span><span class="dc-badge">'+(d.id===myId?'Current':'Connected')+'</span>';p.appendChild(c);});}
+async function saveNotes(){await window.ghostDesk.storeSet('notes-'+myId,document.getElementById('notes-area').value);}
+async function getSnippets(){return await window.ghostDesk.storeGet('snippets-'+myId)||[];}
+async function saveSnippets(l){await window.ghostDesk.storeSet('snippets-'+myId,l);}
+function renderSnippets(list){const el=document.getElementById('snippet-list');el.innerHTML='';list.forEach((s,i)=>{const d=document.createElement('div');d.className='snippet-item';d.innerHTML='<span>'+escHtml(s)+'</span><button onclick="copySnippet('+i+')">Copy</button><button onclick="delSnippet('+i+')">x</button>';el.appendChild(d);});}
+async function addSnippet(){const i=document.getElementById('snippet-input');const v=i.value.trim();if(!v)return;const l=await getSnippets();l.unshift(v);await saveSnippets(l);renderSnippets(l);i.value='';}
+async function copySnippet(i){const l=await getSnippets();await navigator.clipboard.writeText(l[i]);const t=document.getElementById('copied-toast');t.style.display='block';setTimeout(()=>t.style.display='none',1500);}
+async function delSnippet(i){const l=await getSnippets();l.splice(i,1);await saveSnippets(l);renderSnippets(l);}
+async function getTasks(){return await window.ghostDesk.storeGet('tasks-'+myId)||[];}
+async function saveTasks(l){await window.ghostDesk.storeSet('tasks-'+myId,l);}
+function renderTasks(list){const el=document.getElementById('task-list');el.innerHTML='';list.forEach((t,i)=>{const d=document.createElement('div');d.className='task-item'+(t.done?' done':'');d.innerHTML='<input type="checkbox" '+(t.done?'checked':'')+' onchange="toggleTask('+i+')"/><span class="task-text" onclick="toggleTask('+i+')">'+escHtml(t.text)+'</span><button onclick="delTask('+i+')">x</button>';el.appendChild(d);});}
+async function addTask(){const i=document.getElementById('task-input');const v=i.value.trim();if(!v)return;const l=await getTasks();l.push({text:v,done:false});await saveTasks(l);renderTasks(l);i.value='';}
+async function toggleTask(i){const l=await getTasks();l[i].done=!l[i].done;await saveTasks(l);renderTasks(l);}
+async function delTask(i){const l=await getTasks();l.splice(i,1);await saveTasks(l);renderTasks(l);}
+function saveApiKey(){const k=document.getElementById('api-key-input').value.trim();if(!k)return;window.ghostDesk.storeSet('apiKey',k);setAiStatus('Saved!');setTimeout(()=>setAiStatus(''),2000);}
+function setAiStatus(m,e=false){const el=document.getElementById('ai-status');el.textContent=m;el.className='ai-status'+(e?' error':'');}
+function aiKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAiMessage();}}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
+function clearChat(){chatHistory=[];document.getElementById('ai-messages').innerHTML='<div class="msg ai"><div class="msg-label">GHOST AI</div><div class="msg-bubble">Chat cleared!</div></div>';}
+function appendMsg(role,content,streaming=false){const m=document.getElementById('ai-messages');const d=document.createElement('div');d.className='msg '+role+(streaming?' streaming':'');d.innerHTML='<div class="msg-label">'+(role==='user'?'YOU':'GHOST AI')+'</div><div class="msg-bubble"></div>';d.querySelector('.msg-bubble').textContent=content;m.appendChild(d);m.scrollTop=m.scrollHeight;return d;}
+async function sendAiMessage(){
+  if(isStreaming)return;
+  const inp=document.getElementById('ai-input');
+  const q=inp.value.trim();if(!q)return;
+  const key=document.getElementById('api-key-input').value.trim()||await window.ghostDesk.storeGet('apiKey');
+  if(!key){setAiStatus('Add your API key first',true);return;}
+  inp.value='';inp.style.height='auto';
+  isStreaming=true;document.getElementById('ai-send-btn').disabled=true;
+  appendMsg('user',q);chatHistory.push({role:'user',content:q});
+  const d=appendMsg('ai','',true);const b=d.querySelector('.msg-bubble');
+  let txt='';setAiStatus('Thinking...');
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1024,stream:true,system:'You are a private AI assistant inside GhostDesk. Be concise.',messages:chatHistory})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e?.error?.message||'HTTP '+r.status);}
+    const reader=r.body.getReader();const dec=new TextDecoder();
+    while(true){const{done,value}=await reader.read();if(done)break;const lines=dec.decode(value,{stream:true}).split('\n');for(const l of lines){if(!l.startsWith('data: '))continue;const data=l.slice(6).trim();if(data==='[DONE]')continue;try{const j=JSON.parse(data);if(j.type==='content_block_delta'&&j.delta?.text){txt+=j.delta.text;b.textContent=txt;document.getElementById('ai-messages').scrollTop=99999;}}catch(e){}}}
+    d.classList.remove('streaming');chatHistory.push({role:'assistant',content:txt});setAiStatus('');
+  }catch(err){d.classList.remove('streaming');b.textContent='Error: '+err.message;chatHistory.pop();setAiStatus('Failed - check API key',true);}
+  isStreaming=false;document.getElementById('ai-send-btn').disabled=false;
+}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+</html>

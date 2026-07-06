@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: Segoe UI; padding: 20px; background: #1a1a2e; color: white; margin: 0; }
+  input { width: 100%; padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #7C3AED; background: #0d0d12; color: white; box-sizing: border-box; text-transform: uppercase; margin: 10px 0; outline: none; }
+  button { width: 100%; padding: 10px; background: #7C3AED; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  p { margin: 0; font-size: 13px; color: #8884A8; }
+</style>
+</head>
+<body>
+  <p>Enter session code:</p>
+  <input type="text" id="code" placeholder="e.g. AB12CD" autofocus />
+  <button onclick="submit()">Join Session</button>
+<script>
+  function submit() {
+    const code = document.getElementById('code').value.trim().toUpperCase();
+    if (code) window.location.href = 'ghostdesk://join/' + code;
+  }
+  document.getElementById('code').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submit();
+  });
+</script>
+</body>
+</html>

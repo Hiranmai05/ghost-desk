@@ -1,0 +1,45 @@
+{
+  "name": "ghostdesk",
+  "version": "2.0.0",
+  "description": "A screen-invisible floating overlay with AI assistant",
+  "main": "src/main.js",
+  "author": "GhostDesk",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build-addon": "node scripts/try-build-addon.js",
+    "postinstall": "node scripts/try-build-addon.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3",
+    "node-addon-api": "^7.0.0",
+    "node-gyp": "^10.0.0"
+  },
+  "dependencies": {
+    "@jitsi/robotjs": "^0.6.22",
+    "electron-store": "^8.1.0",
+    "ws": "^8.21.0"
+  },
+  "build": {
+    "appId": "com.ghostdesk.app",
+    "productName": "GhostDesk",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

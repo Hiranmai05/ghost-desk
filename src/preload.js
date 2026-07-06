@@ -1,0 +1,22 @@
+const { contextBridge, ipcRenderer } = require('electron');
+contextBridge.exposeInMainWorld('ghostDesk', {
+  close: () => ipcRenderer.send('close-desk'),
+  minimize: () => ipcRenderer.send('minimize-desk'),
+  openNewDesk: () => ipcRenderer.send('open-new-desk'),
+  storeGet: (key) => ipcRenderer.invoke('store-get', key),
+  storeSet: (key, val) => ipcRenderer.invoke('store-set', key, val),
+  getDeskId: () => ipcRenderer.invoke('get-desk-id'),
+  onDeskIdentity: (cb) => ipcRenderer.on('desk-identity', (_, data) => cb(data)),
+  onDeskList: (cb) => ipcRenderer.on('desk-list', (_, list) => cb(list)),
+  relayStartHost: () => ipcRenderer.send('start-host'),
+  relayJoin: (code) => ipcRenderer.send('start-client', code),
+  relayStop: () => ipcRenderer.send('end-session'),
+  relaySendControl: (data) => ipcRenderer.send('send-control', data),
+  onHostCodeGenerated: (cb) => ipcRenderer.on('host-code-generated', (_, code) => cb(code)),
+  onHostReady: (cb) => ipcRenderer.on('host-ready', (_, code) => cb(code)),
+  onClientConnected: (cb) => ipcRenderer.on('client-connected', (_) => cb()),
+  onSessionEnded: (cb) => ipcRenderer.on('session-ended', (_) => cb()),
+  onRelayError: (cb) => ipcRenderer.on('relay-error', (_, msg) => cb(msg)),
+  onRelayStatus: (cb) => ipcRenderer.on('relay-status', (_, data) => cb(data)),
+  onRelayFrame: (cb) => ipcRenderer.on('screen-frame', (_, frame) => cb(frame)),
+});
